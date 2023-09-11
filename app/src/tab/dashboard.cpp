@@ -203,16 +203,16 @@ public:
         jellyfin::getJSON<jellyfin::Result<jellyfin::ActivityLog>>(
             [ASYNC_TOKEN](const jellyfin::Result<jellyfin::ActivityLog>& r) {
                 ASYNC_RELEASE
-                this->start = r.StartIndex + this->pageSize;
                 if (r.TotalRecordCount == 0) {
                     this->setEmpty();
-                } else if (r.StartIndex == 0) {
+                } else if (this->start == 0) {
                     this->setDataSource(new ActivityDataSource(r.Items));
                 } else {
                     auto dataSrc = dynamic_cast<ActivityDataSource*>(this->getDataSource());
                     dataSrc->appendData(r.Items);
                     this->notifyDataChanged();
                 }
+                this->start += this->pageSize;
             },
             [ASYNC_TOKEN](const std::string& ex) {
                 ASYNC_RELEASE
@@ -486,7 +486,7 @@ void Dashboard::doRunTask(const std::string& id) {
 }
 
 void Dashboard::doStorage() {
-    brls::View *cell = new SkeletonCell();
+    brls::View* cell = new SkeletonCell();
     cell->setGrow(1.0f);
     this->storage->addView(cell);
 
