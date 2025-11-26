@@ -1,12 +1,18 @@
 #!/usr/bin/make -f
 
+PREFIX ?= /usr/local
 TMPDIR ?= /tmp
 
 include /usr/share/dpkg/architecture.mk
 
+export PKG_CONFIG_PATH=$(PREFIX)/lib/pkgconfig
+
 WAYLAND := $(if $(shell dpkg -s libxkbcommon-dev 2>/dev/null),ON,OFF)
 ifneq ($(DEB_BUILD_ARCH),amd64)
 	CMAKE_FLAGS=-DUSE_GLES3=ON
+	FFMPEG_FLAGS=--enable-neon --enable-v4l2_m2m --enable-libudev --enable-libdrm --enable-v4l2-request
+else
+	FFMPEG_FLAGS=--enable-asm --enable-nvdec --enable-ffnvcodec
 endif
 
 curl:
@@ -29,10 +35,93 @@ glfw:
 	cmake --build build-glfw
 	cmake --install build-glfw
 
+libssh2:
+	wget -qO- https://libssh2.org/download/libssh2-1.11.1.tar.xz | tar Jxf - -C $(TMPDIR)
+	cmake -B build-libssh2 -G Ninja -S $(TMPDIR)/libssh2-1.11.1 -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=$(PREFIX) -DCMAKE_INSTALL_RPATH=$(PREFIX)/lib \
+		-DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DCRYPTO_BACKEND=OpenSSL \
+		-DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF
+	cmake --build build-libssh2
+	cmake --install build-libssh2
+
+harfbuzz:
+	wget -qO- https://github.com/harfbuzz/harfbuzz/releases/download/12.2.0/harfbuzz-12.2.0.tar.xz | tar Jxf - -C $(TMPDIR)
+	meson setup build-harfbuzz $(TMPDIR)/harfbuzz-12.2.0 --prefix=$(PREFIX) --libdir=lib \
+		--buildtype=release --default-library=static -Dtests=disabled -Dintrospection=disabled \
+		-Ddocs=disabled -Ddoc_tests=false -Dutilities=disabled
+	meson compile -C build-harfbuzz
+	meson install -C build-harfbuzz
+
+fribidi:
+	wget -qO- https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz | tar Jxf - -C $(TMPDIR)
+	meson setup build-fribidi $(TMPDIR)/fribidi-1.0.16 --prefix=$(PREFIX) --libdir=lib \
+		--buildtype=release --default-library=static -Dbin=false -Ddocs=false -Dtests=false
+	meson compile -C build-fribidi
+	meson install -C build-fribidi
+
+libass: harfbuzz fribidi
+	wget -qO- https://github.com/libass/libass/releases/download/0.17.4/libass-0.17.4.tar.xz | tar Jxf - -C $(TMPDIR)
+	meson setup build-libass $(TMPDIR)/libass-0.17.4 --prefix=$(PREFIX) --libdir=lib \
+		--buildtype=release --default-library=static
+	meson compile -C build-libass
+	meson install -C build-libass
+
+dav1d:
+	wget -qO- https://downloads.videolan.org/pub/videolan/dav1d/1.5.2/dav1d-1.5.2.tar.xz | tar Jxf - -C $(TMPDIR)
+	meson setup build-dav1d $(TMPDIR)/dav1d-1.5.2 --prefix=$(PREFIX) --libdir=lib \
+		--buildtype=release --default-library=static -Denable_tools=false \
+		-Denable_examples=false -Denable_tests=false -Denable_docs=false
+	meson compile -C build-dav1d
+	meson install -C build-dav1d
+
+nv-codec-headers:
+	wget -qO- https://github.com/FFmpeg/nv-codec-headers/archive/n13.0.19.0.tar.gz | tar zxf - -C $(TMPDIR)
+	make -C $(TMPDIR)/nv-codec-headers-n13.0.19.0 PREFIX=$(PREFIX) install
+
+ffmpeg: libass libssh2 dav1d nv-codec-headers
+	wget -qO- https://ffmpeg.org/releases/ffmpeg-7.1.3.tar.xz | tar Jxf - -C $(TMPDIR)
+	patch -d $(TMPDIR)/ffmpeg-7.1.3 -Nbp1 -i $(CURDIR)/scripts/mingw64/ffmpeg/avio.patch
+	patch -d $(TMPDIR)/ffmpeg-7.1.3 -Nbp1 -i $(CURDIR)/scripts/patches/ffmpeg-v4l2-request.patch
+	mkdir -p build-ffmpeg && cd build-ffmpeg && \
+	$(TMPDIR)/ffmpeg-7.1.3/configure --prefix=$(PREFIX) --disable-shared --enable-static \
+		--disable-programs --disable-debug --disable-doc --enable-pic --disable-avdevice \
+		--disable-muxers --disable-encoders --disable-autodetect --enable-openssl --enable-nonfree \
+		--enable-libass --enable-libdav1d --enable-libssh2 --enable-vaapi --enable-vdpau --enable-zlib
+	make -C build-ffmpeg -j$(shell nproc)
+	make -C build-ffmpeg install
+
+libplacebo:
+	git clone https://github.com/haasn/libplacebo.git -b v7.351.0 --depth 1 --recurse-submodules $(TMPDIR)/libplacebo
+	meson setup build-libplacebo $(TMPDIR)/libplacebo --prefix=$(PREFIX) --libdir=lib --buildtype=release \
+		--default-library=static -Ddovi=enabled -Ddemos=false -Dtests=false -Dlcms=disabled -Dvulkan=disabled
+	meson compile -C build-libplacebo
+	meson install -C build-libplacebo
+
+hwdata:
+	wget -qO- https://github.com/vcrhonek/hwdata/archive/v0.401.tar.gz | tar zxf - -C $(TMPDIR)
+	cd $(TMPDIR)/hwdata-0.401 && ./configure --disable-blacklist
+	make -C $(TMPDIR)/hwdata-0.401 install
+
+libdisplay-info: hwdata
+	wget -qO- https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/0.3.0/downloads/libdisplay-info-0.3.0.tar.xz | tar Jxf - -C $(TMPDIR)
+	meson setup build-libdisplay-info $(TMPDIR)/libdisplay-info-0.3.0 --prefix=$(PREFIX) \
+		--libdir=lib --default-library=static
+	meson compile -C build-libdisplay-info
+	meson install -C build-libdisplay-info
+
+mpv: ffmpeg libplacebo libdisplay-info
+	wget -qO- https://github.com/mpv-player/mpv/archive/v0.40.0.tar.gz | tar zxf - -C $(TMPDIR)
+	patch -d $(TMPDIR)/mpv-0.40.0 -Nbp1 -i $(CURDIR)/scripts/patches/mpv-v4l2request.patch
+	meson setup build-mpv $(TMPDIR)/mpv-0.40.0 --prefix=$(PREFIX) --libdir=lib \
+		--buildtype=release --default-library=static -Dlibmpv=true -Dcplayer=false \
+		-Dtests=false -Dlibarchive=disabled -Dlua=disabled -Dvulkan=disabled -Dwayland=disabled
+	meson compile -C build-mpv
+	meson install -C build-mpv
+
 %:
 	dh $@ --buildsystem=cmake+ninja --builddirectory=build
 
-override_dh_auto_configure: curl glfw
+override_dh_auto_configure: curl glfw mpv
 	dh_auto_configure -- \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DPLATFORM_DESKTOP=ON \

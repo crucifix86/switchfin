@@ -57,7 +57,11 @@ foreach(l ${_MPV_LIBRARY_NAMES})
             ${PC_MPV_LIBRARY_DIRS} # Unused for MPV but anyway
         PATH_SUFFIXES lib${LIB_SUFFIX}
     )
-    list(APPEND MPV_LIBRARY ${MPV_LIBRARY_${l}})
+    if (${MPV_LIBRARY_${l}} STREQUAL "MPV_LIBRARY_${l}-NOTFOUND")
+        list(APPEND MPV_LIBRARY ${l})
+    else()
+        list(APPEND MPV_LIBRARY ${MPV_LIBRARY_${l}})
+    endif ()
 endforeach ()
 
 get_filename_component(_MPV_LIBRARY_DIR ${MPV_LIBRARY_mpv} PATH)

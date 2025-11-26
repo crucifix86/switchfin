@@ -246,12 +246,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - { img: ubuntu, tag: noble }
+        - { img: ubuntu, tag: jammy }
         - { img: debian, tag: bookworm }
         - { arch: x86_64, runner: ubuntu-24.04 }
         - { arch: aarch64, runner: ubuntu-24.04-arm }
         arch: [ x86_64, aarch64 ]
-        tag: [ noble, bookworm ]
+        tag: [ jammy, bookworm ]
     runs-on: ${{ matrix.runner }}
     container:
       image: ${{ matrix.img }}:${{ matrix.tag }}
@@ -262,9 +262,10 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         apt-get update
-        apt-get install -y --no-install-recommends debhelper cmake build-essential \
-          ninja-build git wget ca-certificates xorg-dev libdbus-1-dev libssl-dev \
-          libwayland-dev libxkbcommon-dev libwebp-dev libmpv-dev
+        apt-get install -y --no-install-recommends debhelper cmake build-essential ninja-build nasm python3-pip git wget \
+          ca-certificates xorg-dev libxpresent-dev libwayland-dev libxkbcommon-dev wayland-protocols libegl-dev libdbus-1-dev libdrm-dev \
+          libpulse-dev libv4l-dev libuchardet-dev libva-dev libvdpau-dev libudev-dev libgbm-dev libssl-dev libwebp-dev
+        pip install meson
     - uses: actions/checkout@v4
       with:
         submodules: recursive
@@ -275,6 +276,14 @@ jobs:
         git config --system --add safe.directory $GITHUB_WORKSPACE
         dpkg-buildpackage -b -nc
         mv ../switchfin_*.deb $GITHUB_WORKSPACE
+    - name: Archive Build Logs
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: logs-${{ matrix.tag }}-${{ matrix.arch }}
+        path: |
+          build-ffmpeg/ffbuild
+          build-*/meson-logs
     - name: Upload Assets
       uses: actions/upload-artifact@v4
       with:
