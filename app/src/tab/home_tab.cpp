@@ -45,15 +45,15 @@ brls::View* HomeTab::create() { return new HomeTab(); }
 
 void HomeTab::doRequest() {
     this->userResume->reset();
-    this->showNextup->reset();
+    // this->showNextup->reset();  // Next Up disabled - redundant with library views
     this->userResume->doRequest();
-    this->showNextup->doRequest();
+    // this->showNextup->doRequest();
 }
 
 void HomeTab::onCreate() {
     auto actionRefresh = [this](brls::View* view) {
         this->userResume->doRequest(true);
-        this->showNextup->doRequest(true);
+        // this->showNextup->doRequest(true);  // Next Up disabled
         for (auto recyler : this->latest) {
             recyler->doLatest(true);
         }
@@ -68,7 +68,7 @@ void HomeTab::onCreate() {
         [ASYNC_TOKEN](const jellyfin::Result<jellyfin::Collection>& r) {
             ASYNC_RELEASE
             this->userResume->doRequest();
-            this->showNextup->doRequest();
+            // this->showNextup->doRequest();  // Next Up disabled
 
             auto& excludes = AppConfig::instance().userConfig().LatestItemsExcludes;
 

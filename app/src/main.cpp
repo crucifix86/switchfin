@@ -96,23 +96,29 @@ int main(int argc, char* argv[]) {
     brls::Application::registerXMLView("RemoteTab", RemoteTab::create);
     brls::Application::registerXMLView("SettingTab", SettingTab::create);
 
-    brls::Theme::getLightTheme().addColor("color/app", nvgRGB(2, 176, 183));
-    brls::Theme::getDarkTheme().addColor("color/app", nvgRGB(51, 186, 227));
-    // 用于骨架屏背景色
+    // JellyTV Purple Theme
+    brls::Theme::getLightTheme().addColor("color/app", nvgRGB(153, 80, 230));   // Jellyfin purple
+    brls::Theme::getDarkTheme().addColor("color/app", nvgRGB(153, 80, 230));    // Jellyfin purple
+    // Skeleton/loading background
     brls::Theme::getLightTheme().addColor("color/grey_1", nvgRGB(245, 246, 247));
-    brls::Theme::getDarkTheme().addColor("color/grey_1", nvgRGB(51, 52, 53));
+    brls::Theme::getDarkTheme().addColor("color/grey_1", nvgRGB(38, 38, 51));   // Darker card bg
     brls::Theme::getLightTheme().addColor("color/grey_2", nvgRGB(245, 245, 245));
-    brls::Theme::getDarkTheme().addColor("color/grey_2", nvgRGB(51, 53, 55));
+    brls::Theme::getDarkTheme().addColor("color/grey_2", nvgRGB(38, 38, 51));   // Card background
     brls::Theme::getLightTheme().addColor("color/grey_3", nvgRGBA(200, 200, 200, 16));
-    brls::Theme::getDarkTheme().addColor("color/grey_3", nvgRGBA(160, 160, 160, 160));
+    brls::Theme::getDarkTheme().addColor("color/grey_3", nvgRGBA(100, 100, 120, 160));
     brls::Theme::getLightTheme().addColor("color/danger", nvgRGB(198, 28, 28));
     brls::Theme::getDarkTheme().addColor("color/danger", nvgRGB(198, 28, 28));
-    // 分割线颜色
+    // Line/divider color
     brls::Theme::getLightTheme().addColor("color/line", nvgRGB(208, 208, 208));
-    brls::Theme::getDarkTheme().addColor("color/line", nvgRGB(100, 100, 100));
-    // 深浅配色通用的灰色字体颜色
+    brls::Theme::getDarkTheme().addColor("color/line", nvgRGB(60, 60, 70));
+    // Grey font color
     brls::Theme::getLightTheme().addColor("font/grey", nvgRGB(148, 153, 160));
     brls::Theme::getDarkTheme().addColor("font/grey", nvgRGB(148, 153, 160));
+    // JellyTV sidebar colors
+    brls::Theme::getLightTheme().addColor("color/sidebar_bg", nvgRGB(240, 240, 245));
+    brls::Theme::getDarkTheme().addColor("color/sidebar_bg", nvgRGB(15, 15, 23));  // Very dark
+    brls::Theme::getLightTheme().addColor("color/header_bg", nvgRGB(235, 235, 240));
+    brls::Theme::getDarkTheme().addColor("color/header_bg", nvgRGB(20, 20, 26));   // Dark header
 
     brls::getStyle().addMetric("main/content_padding_sides", 25.f);
     brls::getStyle().addMetric("main/content_padding_top_bottom", 30.f);

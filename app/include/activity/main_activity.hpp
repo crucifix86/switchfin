@@ -19,6 +19,8 @@
 #include <borealis.hpp>
 #include <api/websocket.hpp>
 
+class AutoTabFrame;
+
 class MainActivity : public brls::Activity {
 public:
     // Declare that the content of this activity is the given XML file
@@ -29,5 +31,9 @@ public:
     void onContentAvailable() override;
 
 private:
+    BRLS_BIND(AutoTabFrame, tabFrame, "main/tabFrame");
+
     std::unique_ptr<websocket> ws;
+
+    void loadLibraries();
 };

@@ -1,17 +1,36 @@
 <brls:Box
     width="auto"
     height="auto"
-    paddingLeft="@style/main/content_padding_sides"
-    paddingRight="@style/main/content_padding_sides"
-    paddingTop="@style/main/content_padding_top_bottom"
-    paddingBottom="@style/main/content_padding_top_bottom">
+    axis="column">
 
-    <RecyclingGrid
+    <!-- Library Header - title set dynamically -->
+    <brls:Box
+        width="100%"
+        height="60"
+        backgroundColor="@theme/color/header_bg"
+        paddingLeft="30"
+        alignItems="center">
+        <brls:Label
+            id="media/header/title"
+            fontSize="28"
+            text="" />
+    </brls:Box>
+
+    <brls:Box
         grow="1"
-        wireframe="false"
-        spanCount="6"
-        itemHeight="300"
-        id="media/series" />
+        paddingLeft="30"
+        paddingRight="30"
+        paddingTop="20"
+        paddingBottom="20">
+
+        <RecyclingGrid
+            grow="1"
+            wireframe="false"
+            spanCount="6"
+            itemHeight="280"
+            id="media/series" />
+
+    </brls:Box>
 
     <ButtonClose
         positionType="absolute"

@@ -1,26 +1,31 @@
 <brls:Box
     width="auto"
     height="auto"
-    paddingLeft="@style/main/content_padding_sides"
-    paddingRight="@style/main/content_padding_sides"
-    paddingBottom="@style/main/content_padding_top_bottom">
+    axis="column">
 
     <AutoTabFrame
         id="media/tabFrame"
         grow="1"
         defaultTab="0"
-        tabHeight="60"
+        tabHeight="50"
         tabItemActiveTextColor="@theme/color/app"
         sidebarPosition="top">
 
         <Tab label="@i18n/main/tabs/home"
             fontSize="18">
-            <RecyclingGrid
+            <brls:Box
                 grow="1"
-                wireframe="false"
-                spanCount="6"
-                itemHeight="300"
-                id="media/series" />
+                paddingLeft="30"
+                paddingRight="30"
+                paddingTop="15"
+                paddingBottom="20">
+                <RecyclingGrid
+                    grow="1"
+                    wireframe="false"
+                    spanCount="6"
+                    itemHeight="280"
+                    id="media/series" />
+            </brls:Box>
         </Tab>
     </AutoTabFrame>
 

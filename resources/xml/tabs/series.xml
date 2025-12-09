@@ -5,7 +5,7 @@
     <AutoTabFrame
         id="series/tabFrame"
         grow="1"
-        tabBackgroundColor="@theme/color/grey_1"
+        tabBackgroundColor="@theme/color/sidebar_bg"
         tabItemActiveTextColor="@theme/color/app"
         defaultTab="0"
         demandMode="false"
