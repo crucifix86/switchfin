@@ -88,6 +88,35 @@ Always use `--entrypoint ""` to bypass the default entrypoint script.
 
 Ignore the "dubious ownership" warnings - they don't affect the build.
 
+### PKG is too small (~22MB instead of ~58MB)
+
+This happens when `rm -rf build_ps4` deletes the CMake cache. The clean build reconfigures CMake but may miss some settings.
+
+**Solution**: Don't use clean builds unless absolutely necessary. Use incremental builds instead:
+
+```bash
+docker run --rm --entrypoint "" \
+  -v /home/doug/switchfin-source:/src \
+  -w /src \
+  xfangfang/pacbrew:250221 \
+  /bin/bash -c "export OPENORBIS=/opt/pacbrew/ps4/openorbis && make -C build_ps4 -j4"
+```
+
+### Changes not being compiled
+
+Make may not detect file changes due to Docker timestamp issues. Force recompile specific files with `touch`:
+
+```bash
+touch /home/doug/switchfin-source/app/src/view/mpv_core.cpp
+# Then run incremental build
+```
+
+Or touch all changed files before building:
+
+```bash
+touch app/src/activity/player_view.cpp app/src/view/mpv_core.cpp
+```
+
 ## Desktop Build (for testing)
 
 For quick testing without PS4:
