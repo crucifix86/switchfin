@@ -9,36 +9,9 @@ Switchfin is third-party PC player for Jellyfin that provides a native user inte
 
 **This project is in its early stages so expect bugs.**
 
-## Screenshots
+## Screenshot
 
-<table>
-  <tbody>
-    <tr>
-      <th>Home</th>
-      <th>Library</th>
-    </tr>
-    <tr>
-      <td><img src="images/home.jpg" alt="Home"></td>
-      <td><img src="images/library.jpg" alt="Library"></td>
-    </tr>
-    <tr>
-      <th>Search</th>
-      <th>Music</th>
-    </tr>
-    <tr>
-      <td><img src="images/search.jpg" alt="Search"></td>
-      <td><img src="images/music.jpg" alt="Music"></td>
-    </tr>
-    <tr>
-      <th>Series</th>
-      <th>Episode</th>
-    </tr>
-    <tr>
-      <td><img src="images/series.jpg" alt="Series"></td>
-      <td><img src="images/episode.jpg" alt="Episode"></td>
-    </tr>
-  </tbody>
-</table>
+![Switchfin PS4](IMG_1800.jpeg)
 
 ## Features
 - Completely native interface
