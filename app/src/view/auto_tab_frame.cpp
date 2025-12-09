@@ -370,6 +370,14 @@ brls::View* AutoTabFrame::getNextFocus(brls::FocusDirection direction, brls::Vie
     View* currentFocus = nullptr;
 
     while (!currentFocus && currentFocusIndex >= 0 && currentFocusIndex < this->getChildren().size()) {
+        // When navigating to sidebar, return the currently active tab item instead of getDefaultFocus
+        if (this->getChildren()[currentFocusIndex] == this->sidebar) {
+            int activeIdx = this->group.getActiveIndex();
+            if (activeIdx >= 0 && activeIdx < (int)this->sidebar->getChildren().size()) {
+                currentFocus = this->sidebar->getChildren()[activeIdx];
+                break;
+            }
+        }
         currentFocus = this->getChildren()[currentFocusIndex]->getDefaultFocus();
         currentFocusIndex += offset;
     }
