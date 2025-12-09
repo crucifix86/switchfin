@@ -80,7 +80,7 @@ void HomeTab::onCreate() {
                 recyler->setTitle(item.Name);
 
                 if (item.CollectionType == "livetv") {
-                    recyler->setFrameHeight(150);
+                    recyler->setFrameHeight(140);
                     recyler->setItemWidth(200);
                     recyler->setPageSize(24);
                     recyler->onQuery([](size_t start, size_t pageSize) {
@@ -99,11 +99,11 @@ void HomeTab::onCreate() {
                 } else {
                     std::string itemId = std::move(item.Id);
                     if (item.CollectionType == "music") {
-                        recyler->setFrameHeight(225);
+                        recyler->setFrameHeight(200);
                     } else if (item.CollectionType == "books") {
-                        recyler->setFrameHeight(280);
+                        recyler->setFrameHeight(240);
                     } else {
-                        recyler->setFrameHeight(300);
+                        recyler->setFrameHeight(260);
                     }
                     recyler->setItemWidth(175);
                     recyler->onQuery([itemId](size_t start, size_t pageSize) {

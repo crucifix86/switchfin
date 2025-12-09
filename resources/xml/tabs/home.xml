@@ -31,9 +31,9 @@
             <RecylingVideo
                 nextPage="auto"
                 resume="true"
-                pageSize="8"
-                frameHeight="240"
-                itemWidth="300"
+                pageSize="10"
+                frameHeight="200"
+                itemWidth="260"
                 id="home/user/resume"
                 title="@i18n/main/home/resume" />
 

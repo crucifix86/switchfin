@@ -68,6 +68,11 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    // Force dark theme on PS4 for JellyTV look
+#if defined(__PS4__)
+    brls::Application::getPlatform()->setThemeVariant(brls::ThemeVariant::DARK);
+#endif
+
     // Return directly to the desktop when closing the application (only for NX)
     brls::Application::getPlatform()->exitToHomeMode(true);
 
@@ -119,9 +124,12 @@ int main(int argc, char* argv[]) {
     brls::Theme::getDarkTheme().addColor("color/sidebar_bg", nvgRGB(15, 15, 23));  // Very dark
     brls::Theme::getLightTheme().addColor("color/header_bg", nvgRGB(235, 235, 240));
     brls::Theme::getDarkTheme().addColor("color/header_bg", nvgRGB(20, 20, 26));   // Dark header
+    // Override default background for darker JellyTV look
+    brls::Theme::getDarkTheme().addColor("brls/background", nvgRGB(18, 18, 24));   // Near black
 
-    brls::getStyle().addMetric("main/content_padding_sides", 25.f);
-    brls::getStyle().addMetric("main/content_padding_top_bottom", 30.f);
+    // Larger padding for TV screens
+    brls::getStyle().addMetric("main/content_padding_sides", 50.f);
+    brls::getStyle().addMetric("main/content_padding_top_bottom", 40.f);
 
     if (!brls::Application::getPlatform()->isApplicationMode()) {
         brls::Application::pushActivity(new HintActivity());
