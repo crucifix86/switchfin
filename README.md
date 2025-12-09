@@ -15,7 +15,7 @@ Switchfin is third-party PC player for Jellyfin that provides a native user inte
 
 ## Features
 - Completely native interface
-- Supported media items: movies, series, seasons, episodes 
+- Supported media items: movies, series, seasons, episodes
   - Direct play and transcoding
 - Remote browser for Webdav/Apache/Nginx/FTP server
 - Base on MPV Player
@@ -25,6 +25,7 @@ Switchfin is third-party PC player for Jellyfin that provides a native user inte
   - Subtitle codecs: SRT, VTT, SSA/ASS, DVDSUB
   - Optionally force software decoding when hardware decoding has issues.
 - External drive support using [libusbhsfs](https://github.com/DarkMatterCore/libusbhsfs)
+- **PS4: Semi-automatic in-app updates** (no USB required)
 
 ## Input mapping during playback
 
@@ -44,6 +45,18 @@ gamepad | keyboard | describe
 * Windows 7 or later with DirectX 11.1 support
 * Intel or Apple Silicon Mac models 10.15 or later
 * Linux flatpak x86_64/arm64v8 with OpenGL3 support
+* PS4 with GoldHEN (jailbroken)
+
+## PS4 Updates
+
+The PS4 version supports semi-automatic updates without USB:
+
+1. When an update is available, the app prompts you
+2. Click update - the PKG downloads to internal storage
+3. After download, follow the on-screen instructions:
+   - Delete the current app from home screen
+   - Open GoldHEN Package Installer
+   - Set source to HDD and install the update
 
 ## FAQ
 
