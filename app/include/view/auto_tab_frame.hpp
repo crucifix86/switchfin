@@ -37,6 +37,7 @@ public:
 
     void onFocusGained() override;
     void onFocusLost() override;
+    View* getDefaultFocus() override;
 
     void setGroup(AutoSidebarItemGroup* group);
 

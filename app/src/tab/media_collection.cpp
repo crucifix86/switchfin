@@ -334,7 +334,7 @@ void MediaCollection::doRequest() {
                 this->recycler->setEmpty();
             } else if (r.StartIndex == 0) {
                 this->recycler->setDataSource(new VideoDataSource(r.Items));
-                brls::Application::giveFocus(this->recycler);
+                // Don't steal focus from sidebar - user navigates to content when ready
             } else if (r.Items.size() > 0) {
                 auto dataSrc = dynamic_cast<VideoDataSource*>(this->recycler->getDataSource());
                 dataSrc->appendData(r.Items);

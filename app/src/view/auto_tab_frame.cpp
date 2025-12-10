@@ -331,27 +331,63 @@ void AutoTabFrame::setTabAttachedView(brls::View* newContent) {
     newContent->setGrow(1.0f);
     this->addView(newContent);  // addView calls willAppear
     this->activeTab = newContent;
+
+    // Force layout recalculation to complete immediately
+    // This prevents highlight glitches during lazy content loading
+    this->invalidate();
 }
 
 void AutoTabFrame::setDefaultTabIndex(size_t index) { this->sidebar->setDefaultFocusedIndex(index); }
 
 size_t AutoTabFrame::getDefaultTabIndex() { return this->sidebar->getDefaultFocusedIndex(); }
 
+// PS4 focus debug logging
+#ifdef __PS4__
+static FILE* s_focus_log = nullptr;
+static bool s_focus_log_init = false;
+#define FOCUS_LOG(fmt, ...) \
+    if (s_focus_log) { fprintf(s_focus_log, fmt "\n", ##__VA_ARGS__); fflush(s_focus_log); }
+#endif
+
 brls::View* AutoTabFrame::getNextFocus(brls::FocusDirection direction, brls::View* currentView) {
+#ifdef __PS4__
+    // Initialize log file once
+    if (!s_focus_log_init) {
+        s_focus_log = fopen("/data/Switchfin/focus_debug.log", "w");
+        s_focus_log_init = true;
+        FOCUS_LOG("Focus debug log initialized");
+    }
+    FOCUS_LOG("getNextFocus dir=%d currentView=%s size=%.0fx%.0f",
+        (int)direction, currentView->describe().c_str(), currentView->getWidth(), currentView->getHeight());
+#endif
     // Handle navigation within sidebar - prevent going past first/last item
     if (currentView == this->sidebar) {
         size_t itemCount = this->sidebar->getChildren().size();
+#ifdef __PS4__
+        FOCUS_LOG("  currentView IS sidebar, itemCount=%zu", itemCount);
+#endif
         if (itemCount > 0) {
             int activeIdx = this->group.getActiveIndex();
+#ifdef __PS4__
+            FOCUS_LOG("  activeIdx=%d", activeIdx);
+#endif
             if (direction == brls::FocusDirection::DOWN) {
                 // If at last item, stay there
                 if (activeIdx >= (int)itemCount - 1) {
-                    return this->sidebar->getChildren()[itemCount - 1];
+                    auto* result = this->sidebar->getChildren()[itemCount - 1];
+#ifdef __PS4__
+                    FOCUS_LOG("  RETURN: last sidebar item %s size=%.0fx%.0f", result->describe().c_str(), result->getWidth(), result->getHeight());
+#endif
+                    return result;
                 }
             } else if (direction == brls::FocusDirection::UP) {
                 // If at first item, stay there
                 if (activeIdx <= 0) {
-                    return this->sidebar->getChildren()[0];
+                    auto* result = this->sidebar->getChildren()[0];
+#ifdef __PS4__
+                    FOCUS_LOG("  RETURN: first sidebar item %s size=%.0fx%.0f", result->describe().c_str(), result->getWidth(), result->getHeight());
+#endif
+                    return result;
                 }
             }
         }
@@ -359,6 +395,9 @@ brls::View* AutoTabFrame::getNextFocus(brls::FocusDirection direction, brls::Vie
 
     // Do not navigate down, except through sidebar area
     if (direction == brls::FocusDirection::DOWN && currentView != this->sidebar) {
+#ifdef __PS4__
+        FOCUS_LOG("  RETURN: nullptr (DOWN but not from sidebar)");
+#endif
         return nullptr;
     }
 
@@ -403,6 +442,13 @@ brls::View* AutoTabFrame::getNextFocus(brls::FocusDirection direction, brls::Vie
 
     currentFocus = getParentNavigationDecision(this, currentFocus, direction);
     if (!currentFocus && hasParent()) currentFocus = getParent()->getNextFocus(direction, this);
+#ifdef __PS4__
+    if (currentFocus) {
+        FOCUS_LOG("  RETURN: %s size=%.0fx%.0f", currentFocus->describe().c_str(), currentFocus->getWidth(), currentFocus->getHeight());
+    } else {
+        FOCUS_LOG("  RETURN: nullptr");
+    }
+#endif
     return currentFocus;
 }
 
@@ -574,7 +620,6 @@ const std::string autoSidebarItemXML = R"xml(
 
         <brls:Box
             wireframe="false"
-            grow="1.0"
             width="auto"
             height="auto"
             justifyContent="center"
@@ -643,7 +688,6 @@ const std::string autoSidebarItemPlainXML = R"xml(
 
         <brls:Box
             wireframe="false"
-            grow="1.0"
             width="auto"
             height="auto"
             justifyContent="center"
@@ -806,10 +850,19 @@ bool AutoSidebarItem::isActive() { return this->active; };
 void AutoSidebarItem::onFocusGained() {
     Box::onFocusGained();
 
+    // Force layout sync on this item to ensure correct highlight dimensions
+    this->invalidate();
+
     if (this->group) this->group->setActive(this);
 }
 
 void AutoSidebarItem::onFocusLost() { Box::onFocusLost(); }
+
+brls::View* AutoSidebarItem::getDefaultFocus() {
+    // Always return this item itself as the focus target
+    // This prevents focus from going to child elements or parent containers
+    return this;
+}
 
 void AutoSidebarItem::setGroup(AutoSidebarItemGroup* group) {
     this->group = group;
