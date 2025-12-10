@@ -23,6 +23,17 @@ public:
 
     static RecyclingGridItem* create() { return new EpisodeCardCell(); }
 
+    void onFocusGained() override {
+        BaseCardCell::onFocusGained();
+        this->accent->setVisibility(brls::Visibility::VISIBLE);
+    }
+
+    void onFocusLost() override {
+        BaseCardCell::onFocusLost();
+        this->accent->setVisibility(brls::Visibility::INVISIBLE);
+    }
+
+    BRLS_BIND(brls::Rectangle, accent, "episode/card/accent");
     BRLS_BIND(brls::Label, labelName, "episode/card/name");
     BRLS_BIND(brls::Label, labelOverview, "episode/card/overview");
     BRLS_BIND(SVGImage, badgeTopRight, "video/card/badge/top");

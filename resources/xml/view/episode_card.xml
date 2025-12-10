@@ -2,6 +2,14 @@
     highlightCornerRadius="8"
     padding="5">
 
+    <brls:Rectangle
+        id="episode/card/accent"
+        width="8"
+        height="auto"
+        visibility="invisible"
+        marginRight="8"
+        color="#9950E6" />
+
     <brls:Box
         axis="row"
         width="300"
