@@ -226,22 +226,29 @@ void MediaSeries::doSeries() {
 void MediaSeries::doSeason() {
     std::string query = HTTP::encode_form({
         {"userId", AppConfig::instance().getUserId()},
-        {"fields", "ItemCounts"},
     });
 
     ASYNC_RETAIN
     jellyfin::getJSON<jellyfin::Result<jellyfin::Season>>(
         [ASYNC_TOKEN](const jellyfin::Result<jellyfin::Season>& r) {
             ASYNC_RELEASE
-
-            for (size_t i = 0; i < r.Items.size(); i++) {
-                auto& it = r.Items.at(i);
-                auto* item = new AutoSidebarItem();
-                item->setTabStyle(AutoTabBarStyle::ACCENT);
-                item->setFontSize(22);
-                item->setLabel(it.Name);
-                this->tabFrame->addTab(item, [it]() { return new MediaSeason(it); });
-            }
+            // Copy items to ensure they stay valid during deferred execution
+            auto items = r.Items;
+            // Use brls::sync to ensure all tab additions happen atomically on main thread
+            brls::sync([this, items]() {
+                for (const auto& it : items) {
+                    auto* item = new AutoSidebarItem();
+                    item->setTabStyle(AutoTabBarStyle::ACCENT);
+                    item->setFontSize(22);
+                    std::string label = it.Name.empty()
+                        ? fmt::format("Season {}", it.IndexNumber)
+                        : it.Name;
+                    item->setLabel(label);
+                    this->tabFrame->addTab(item, [it]() { return new MediaSeason(it); });
+                }
+                // Force layout update after all tabs are added
+                this->tabFrame->invalidate();
+            });
         },
         [ASYNC_TOKEN](const std::string& ex) {
             ASYNC_RELEASE

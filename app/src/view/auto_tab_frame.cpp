@@ -807,6 +807,11 @@ void AutoSidebarItem::setTabStyle(AutoTabBarStyle style) {
     default:
         this->inflateFromXMLString(autoSidebarItemXML);
     }
+
+    // Explicitly set default text color for inactive state
+    // This is needed because setActive(false) early-returns when already inactive
+    brls::Theme theme = brls::Application::getTheme();
+    this->label->setTextColor(theme["brls/text"]);
 }
 
 void AutoSidebarItem::setActive(bool active) {

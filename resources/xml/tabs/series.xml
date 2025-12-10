@@ -9,7 +9,7 @@
         tabItemActiveTextColor="@theme/color/app"
         defaultTab="0"
         demandMode="false"
-        sidebarWidth="150"
+        sidebarWidth="220"
         sidebarPosition="left">
 
         <Tab label="@i18n/main/media/intro"

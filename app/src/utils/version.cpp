@@ -206,9 +206,8 @@ static int bgft_init(void) {
 #else
     // Without JBC, try sandbox path
     if (s_bgft_log) { fprintf(s_bgft_log, "bgft_init: Loading module from sandbox...\n"); fflush(s_bgft_log); }
-    char sandbox[64];
-    sceKernelGetFsSandboxRandomWord(sandbox);
-    std::string module_path = fmt::format("/{}/common/lib/libSceBgft.sprx", sandbox);
+    const char* sandbox = sceKernelGetFsSandboxRandomWord();
+    std::string module_path = fmt::format("/{}/common/lib/libSceBgft.sprx", sandbox ? sandbox : "");
     if (s_bgft_log) { fprintf(s_bgft_log, "bgft_init: Path: %s\n", module_path.c_str()); fflush(s_bgft_log); }
     s_bgft_module_handle = sceKernelLoadStartModule(module_path.c_str(), 0, NULL, 0, NULL, NULL);
 #endif

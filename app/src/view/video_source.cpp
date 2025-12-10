@@ -127,10 +127,14 @@ void VideoDataSource::onItemSelected(brls::Box* recycler, size_t index) {
         PlayerView* view = new PlayerView(item);
         view->setTitie(item.ProductionYear ? fmt::format("{} ({})", item.Name, item.ProductionYear) : item.Name);
     } else if (item.Type == jellyfin::mediaTypeEpisode) {
-        SOURCE_LOG("Creating PlayerView for episode");
-        PlayerView* view = new PlayerView(item);
-        view->setTitie(fmt::format("S{}E{} - {}", item.ParentIndexNumber, item.IndexNumber, item.Name));
-        view->setSeries(item.SeriesId);
+        SOURCE_LOG("Opening MediaSeries for episode's series");
+        // Create a series item from the episode info and open MediaSeries
+        jellyfin::Item seriesItem;
+        seriesItem.Id = item.SeriesId;
+        seriesItem.Name = item.SeriesName;
+        seriesItem.Type = jellyfin::mediaTypeSeries;
+        seriesItem.ImageTags = {}; // Will be loaded by MediaSeries
+        recycler->present(new MediaSeries(seriesItem));
     } else if (item.Type == jellyfin::mediaTypeMusicAlbum) {
         recycler->present(new MusicAlbum(item));
     } else if (item.Type == jellyfin::mediaTypeMusicArtist) {
