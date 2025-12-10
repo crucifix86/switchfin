@@ -338,6 +338,25 @@ void AutoTabFrame::setDefaultTabIndex(size_t index) { this->sidebar->setDefaultF
 size_t AutoTabFrame::getDefaultTabIndex() { return this->sidebar->getDefaultFocusedIndex(); }
 
 brls::View* AutoTabFrame::getNextFocus(brls::FocusDirection direction, brls::View* currentView) {
+    // Handle navigation within sidebar - prevent going past first/last item
+    if (currentView == this->sidebar) {
+        size_t itemCount = this->sidebar->getChildren().size();
+        if (itemCount > 0) {
+            int activeIdx = this->group.getActiveIndex();
+            if (direction == brls::FocusDirection::DOWN) {
+                // If at last item, stay there
+                if (activeIdx >= (int)itemCount - 1) {
+                    return this->sidebar->getChildren()[itemCount - 1];
+                }
+            } else if (direction == brls::FocusDirection::UP) {
+                // If at first item, stay there
+                if (activeIdx <= 0) {
+                    return this->sidebar->getChildren()[0];
+                }
+            }
+        }
+    }
+
     // Do not navigate down, except through sidebar area
     if (direction == brls::FocusDirection::DOWN && currentView != this->sidebar) {
         return nullptr;

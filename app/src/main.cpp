@@ -37,6 +37,13 @@
 using namespace brls::literals;  // for _i18n
 
 int main(int argc, char* argv[]) {
+#ifdef __PS4__
+    // Always log to file on PS4 for debugging (FTP to /data/Switchfin/switchfin.log)
+    brls::Logger::setLogOutput(std::fopen("/data/Switchfin/switchfin.log", "w+"));
+    brls::Logger::setLogLevel(brls::LogLevel::LOG_DEBUG);
+    brls::Logger::info("=== Switchfin PS4 started ===");
+#endif
+
     std::vector<std::string> items;
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "-d") == 0) {
@@ -147,9 +154,6 @@ int main(int argc, char* argv[]) {
             {"language", brls::Application::getLocale()},
             {"resolution", fmt::format("{}x{}", brls::Application::windowWidth, brls::Application::windowHeight)},
         })
-
-    std::string v = conf.getItem(AppConfig::APP_UPDATE, std::string("NaN"));
-    if (AppVersion::getVersion().compare(v)) AppVersion::checkUpdate();
 
     // Run the app
     while (brls::Application::mainLoop());

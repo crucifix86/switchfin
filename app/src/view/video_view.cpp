@@ -11,6 +11,17 @@
 #include "view/video_profile.hpp"
 #include "view/video_progress_slider.hpp"
 
+#ifdef __PS4__
+#include <SDL2/SDL.h>
+extern FILE* getPlayerLog();
+#define VIDEO_LOG(fmt, ...) do { \
+    FILE* f = getPlayerLog(); \
+    if (f) { fprintf(f, fmt "\n", ##__VA_ARGS__); fflush(f); } \
+} while(0)
+#else
+#define VIDEO_LOG(fmt, ...) do {} while(0)
+#endif
+
 const int VIDEO_SEEK_NODELAY = 0;
 
 using namespace brls::literals;
@@ -36,6 +47,7 @@ static int getSeekRange(int current) {
 }
 
 VideoView::VideoView() {
+    VIDEO_LOG("=== VideoView CONSTRUCTOR called ===");
     this->inflateFromXMLRes("xml/view/video_view.xml");
     brls::Logger::debug("VideoView: created");
     this->setHideHighlightBorder(true);
@@ -54,6 +66,12 @@ VideoView::VideoView() {
     this->registerAction(
         "hints/back"_i18n, brls::BUTTON_B,
         [this](brls::View* view) {
+            VIDEO_LOG("BUTTON_B pressed in VideoView, ignoreInput=%d", this->ignoreInput ? 1 : 0);
+            // Ignore input for first few frames to prevent accidental close on PS4
+            if (this->ignoreInput) {
+                VIDEO_LOG("BUTTON_B ignored (input guard active)");
+                return true;
+            }
             if (isOsdLock) {
                 this->toggleOSD();
                 return true;
@@ -62,6 +80,7 @@ VideoView::VideoView() {
                 this->toggleOSD();
                 return true;
             }
+            VIDEO_LOG("BUTTON_B calling close()");
             return close();
         },
         true);
@@ -284,6 +303,7 @@ VideoView::VideoView() {
     this->osdLockBox->addGestureRecognizer(new brls::TapGestureRecognizer(this->osdLockBox));
 
     this->btnClose->registerClickAction([](...) {
+        VIDEO_LOG("btnClose clicked - scheduling close()");
         brls::sync([]() { close(); });
         return true;
     });
@@ -330,6 +350,7 @@ VideoView::VideoView() {
 }
 
 VideoView::~VideoView() {
+    VIDEO_LOG("=== VideoView DESTRUCTOR called ===");
     brls::Logger::debug("trying delete VideoView...");
     this->unRegisterMpvEvent();
     disableDimming(false);
@@ -587,10 +608,17 @@ void VideoView::registerMpvEvent() {
         // brls::Logger::info("mpv event => : {}", event);
         switch (event) {
         case MpvEventEnum::MPV_RESUME:
+            VIDEO_LOG("MPV_RESUME received");
             if (MPVCore::OSD_ON_TOGGLE) {
                 this->showOSD(true);
             }
             this->toggleIcon->setImageFromSVGRes("icon/ico-pause.svg");
+            this->hideLoading();  // PS4 fix: force hide loading since LOADING_END may not fire
+            // Clear input guard after a short delay (PS4 fix for spurious BUTTON_B)
+            brls::delay(500, [this]() {
+                VIDEO_LOG("Clearing ignoreInput flag");
+                this->ignoreInput = false;
+            });
             break;
         case MpvEventEnum::MPV_PAUSE:
             if (MPVCore::OSD_ON_TOGGLE) {
@@ -808,7 +836,9 @@ bool VideoView::toggleVolume(brls::View* view) {
 }
 
 bool VideoView::close(bool quit) {
+    VIDEO_LOG("=== VideoView::close() called, quit=%d ===", quit ? 1 : 0);
     if (brls::Application::getActivitiesStack().size() > 1) {
+        VIDEO_LOG("close(): popping activity");
         return brls::Application::popActivity(brls::TransitionAnimation::NONE);
     }
 

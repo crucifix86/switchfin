@@ -1,5 +1,16 @@
 # Switchfin PS4 Build Guide
 
+## PS4 FTP Upload
+
+```bash
+curl -u ps4:ps4 -T build_ps4/IV0001-SFIN00000_00-SFIN000000008000.pkg ftp://192.168.1.123:2121/data/pkg/
+```
+
+- **IP**: 192.168.1.123
+- **Port**: 2121
+- **Username**: ps4
+- **Password**: ps4
+
 ## Prerequisites
 
 - Docker installed and running

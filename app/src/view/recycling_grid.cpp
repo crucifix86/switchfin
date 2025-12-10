@@ -5,11 +5,22 @@
 #include <utility>
 #include "view/recycling_grid.hpp"
 
+#ifdef __PS4__
+extern FILE* getPlayerLog();
+#define GRID_LOG(fmt, ...) do { \
+    FILE* f = getPlayerLog(); \
+    if (f) { fprintf(f, fmt "\n", ##__VA_ARGS__); fflush(f); } \
+} while(0)
+#else
+#define GRID_LOG(fmt, ...) do {} while(0)
+#endif
+
 /// RecyclingGridItem
 
 RecyclingGridItem::RecyclingGridItem() {
     this->setFocusable(true);
     this->registerClickAction([this](View*) {
+        GRID_LOG("=== GRID ITEM CLICKED index=%zu ===", this->index);
         brls::Box* view = this->getParent()->getParent();
         RecyclingView* recycler = dynamic_cast<RecyclingView*>(view);
         if (recycler) recycler->getDataSource()->onItemSelected(view, index);

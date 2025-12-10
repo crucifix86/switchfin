@@ -58,6 +58,16 @@ The PS4 version supports semi-automatic updates without USB:
    - Open GoldHEN Package Installer
    - Set source to HDD and install the update
 
+## PS4 Video Playback Fix
+
+**Issue:** Video would show loading screen with audio playing but no video until pressing buttons multiple times.
+
+**Root Cause:** The borealis UI framework's main loop was blocking on `SDL_WaitEventTimeout()` waiting for SDL events. On PS4, controller input is polled directly via `SDL_GameControllerGetButton()` rather than through SDL events, so video frame updates weren't triggering continuous rendering.
+
+**Fix:** Modified `Application::hasActiveEvent()` in borealis to always return `true` on PS4 (same as Nintendo Switch), preventing the main loop from blocking and ensuring continuous frame rendering.
+
+**File:** `library/borealis/library/lib/core/application.cpp`
+
 ## FAQ
 
 1. Q: Subtitles didn't display?

@@ -10,6 +10,16 @@
 #include "utils/misc.hpp"
 #include <fmt/ranges.h>
 
+#ifdef __PS4__
+extern FILE* getPlayerLog();
+#define MOVIE_LOG(fmt, ...) do { \
+    FILE* f = getPlayerLog(); \
+    if (f) { fprintf(f, fmt "\n", ##__VA_ARGS__); fflush(f); } \
+} while(0)
+#else
+#define MOVIE_LOG(fmt, ...) do {} while(0)
+#endif
+
 using namespace brls::literals;  // for _i18n
 
 MediaMovie::MediaMovie(const jellyfin::Item& item) : itemId(item.Id) {
@@ -22,6 +32,7 @@ MediaMovie::MediaMovie(const jellyfin::Item& item) : itemId(item.Id) {
     this->similar->registerCell("Cell", VideoCardCell::create);
 
     this->btnPlay->registerClickAction([this, item](...) {
+        MOVIE_LOG("=== PLAY BUTTON CLICKED ===");
         PlayerView* view = new PlayerView(item, this->playTicks);
         view->setTitie(item.ProductionYear ? fmt::format("{} ({})", item.Name, item.ProductionYear) : item.Name);
         return true;

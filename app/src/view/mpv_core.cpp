@@ -7,6 +7,19 @@
 #include "utils/misc.hpp"
 #include <fmt/ranges.h>
 
+#ifdef __PS4__
+// PS4 debug logging - direct file output
+static FILE* s_mpv_log = nullptr;
+static int s_draw_count = 0;
+#define MPV_LOG(fmt, ...) do { \
+    if (s_mpv_log) { fprintf(s_mpv_log, fmt "\n", ##__VA_ARGS__); fflush(s_mpv_log); } \
+} while(0)
+// Expose log file for other modules
+FILE* getPlayerLog() { return s_mpv_log; }
+#else
+#define MPV_LOG(fmt, ...) do {} while(0)
+#endif
+
 static inline void check_error(int status) {
     if (status < 0) brls::Logger::error("MPV ERROR => {}", mpv_error_string(status));
 }
@@ -86,6 +99,14 @@ void MPVCore::on_update(void *self) {
             mpv_render_context_report_swap(mpv->mpv_context);
         }
 #else
+#ifdef __PS4__
+        static int update_count = 0;
+        if (update_count < 5) {
+            MPV_LOG("on_update: flags=0x%llx, UPDATE_FRAME=%d",
+                    (unsigned long long)flags, (flags & MPV_RENDER_UPDATE_FRAME) ? 1 : 0);
+            update_count++;
+        }
+#endif
         (void)flags;
 #endif
     });
@@ -123,7 +144,15 @@ void MPVCore::init() {
     }
 
     auto &conf = AppConfig::instance();
-    std::string confDir = conf.configDir(); 
+    std::string confDir = conf.configDir();
+
+#ifdef __PS4__
+    // Initialize PS4 debug log
+    std::string logPath = confDir + "/mpv_debug.log";
+    s_mpv_log = fopen(logPath.c_str(), "w");
+    MPV_LOG("=== MPVCore::init() started ===");
+    MPV_LOG("Config dir: %s", confDir.c_str());
+#endif
 
     // misc
     mpv_set_option_string(mpv, "config", "yes");
@@ -448,6 +477,9 @@ void MPVCore::setFrameSize(brls::Rect area) {
     // Using default framebuffer
     this->mpv_fbo.w = brls::Application::windowWidth;
     this->mpv_fbo.h = brls::Application::windowHeight;
+#ifdef __PS4__
+    MPV_LOG("setFrameSize: area=%.0fx%.0f, fbo=%dx%d", rect.getWidth(), rect.getHeight(), mpv_fbo.w, mpv_fbo.h);
+#endif
 #endif
 }
 
@@ -461,6 +493,15 @@ bool MPVCore::isValid() {
 
 void MPVCore::draw(brls::Rect area, float alpha) {
     if (mpv_context == nullptr) return;
+#ifdef __PS4__
+    static int frame_log_count = 0;
+    if (frame_log_count < 20) {
+        MPV_LOG("draw() area: x=%.0f y=%.0f w=%.0f h=%.0f, rect: x=%.0f y=%.0f w=%.0f h=%.0f, alpha=%.2f",
+                area.getMinX(), area.getMinY(), area.getWidth(), area.getHeight(),
+                rect.getMinX(), rect.getMinY(), rect.getWidth(), rect.getHeight(), alpha);
+        frame_log_count++;
+    }
+#endif
     if (!(this->rect == area)) this->setFrameSize(area);
 
 #ifdef MPV_SW_RENDER
@@ -491,13 +532,36 @@ void MPVCore::draw(brls::Rect area, float alpha) {
 #elif defined(ANDROID)
 #else
     // 只在非透明时绘制视频，可以避免退出页面时视频画面残留
+#ifdef __PS4__
+    // Log draw calls with more detail for PS4 debugging
+    static int frame_count = 0;
+    frame_count++;
+    if (s_draw_count < 20 || frame_count % 60 == 0) {  // Log first 20 and then every 60 frames
+        MPV_LOG("draw(): frame=%d, alpha=%.4f, video_stopped=%d, will_render=%d",
+                frame_count, alpha, this->video_stopped ? 1 : 0,
+                (alpha > 0.9 && !this->video_stopped) ? 1 : 0);
+        if (s_draw_count < 20) s_draw_count++;
+    }
+    // PS4 fix: use more lenient alpha check (0.9 instead of 1.0) to handle floating point issues
+    if (alpha > 0.9 && !this->video_stopped) {
+#else
     if (alpha >= 1 && !this->video_stopped) {
+#endif
 #ifdef BOREALIS_USE_DEKO3D
         static auto videoContext =
             dynamic_cast<brls::SwitchVideoContext *>(brls::Application::getPlatform()->getVideoContext());
         this->mpv_fbo.tex = videoContext->getFramebuffer();
         videoContext->queueSignalFence(&readyFence);
         videoContext->queueFlush();
+#endif
+#ifdef __PS4__
+        // Force update the render context to ensure frames are ready
+        mpv_render_context_update(this->mpv_context);
+        static int render_log_count = 0;
+        if (render_log_count < 10) {
+            MPV_LOG("calling mpv_render_context_render, fbo w=%d h=%d", mpv_fbo.w, mpv_fbo.h);
+            render_log_count++;
+        }
 #endif
         // 绘制视频
         mpv_render_context_render(this->mpv_context, mpv_params);
@@ -508,8 +572,21 @@ void MPVCore::draw(brls::Rect area, float alpha) {
 #elif defined(BOREALIS_USE_OPENGL)
         glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
         glViewport(0, 0, brls::Application::windowWidth, brls::Application::windowHeight);
+#ifdef __PS4__
+        // Reset GL state after mpv render to ensure nanovg works correctly
+        glDisable(GL_CULL_FACE);
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        // Force GPU to complete all pending operations
+        glFinish();
+#endif
 #endif
         mpv_render_context_report_swap(this->mpv_context);
+#ifdef __PS4__
+        // Additional flush after report_swap
+        glFlush();
+#endif
     }
 #endif
 }
@@ -550,18 +627,21 @@ void MPVCore::eventMainLoop() {
             return;
         case MPV_EVENT_FILE_LOADED:
             brls::Logger::info("MPVCore => EVENT_FILE_LOADED");
+            MPV_LOG("EVENT_FILE_LOADED received");
             // event 8: 文件预加载结束，准备解码
             mpvCoreEvent.fire(MpvEventEnum::MPV_LOADED);
             break;
         case MPV_EVENT_START_FILE:
             // event 6: 开始加载文件
             brls::Logger::info("MPVCore => EVENT_START_FILE");
+            MPV_LOG("EVENT_START_FILE received");
             mpvCoreEvent.fire(MpvEventEnum::START_FILE);
             mpvCoreEvent.fire(MpvEventEnum::LOADING_START);
             break;
         case MPV_EVENT_PLAYBACK_RESTART:
             // event 21: 开始播放文件（一般是播放或调整进度结束之后触发）
             brls::Logger::info("MPVCore => EVENT_PLAYBACK_RESTART");
+            MPV_LOG("EVENT_PLAYBACK_RESTART received - setting video_stopped=false");
             this->video_stopped = false;
             if (this->isPaused())
                 mpvCoreEvent.fire(MpvEventEnum::MPV_PAUSE);
@@ -572,14 +652,18 @@ void MPVCore::eventMainLoop() {
             // event 7: 文件播放结束
             this->video_stopped = true;
             auto node = (mpv_event_end_file *)event->data;
+            MPV_LOG("EVENT_END_FILE received - reason=%d", node->reason);
             if (node->reason == MPV_END_FILE_REASON_ERROR) {
+                MPV_LOG("END_FILE reason: ERROR (1) - %s", mpv_error_string(node->error));
                 brls::Logger::error("MPVCore => FILE ERROR: {}", mpv_error_string(node->error));
                 this->stop();
                 mpvCoreEvent.fire(MpvEventEnum::MPV_FILE_ERROR);
             } else if (node->reason == MPV_END_FILE_REASON_EOF) {
+                MPV_LOG("END_FILE reason: EOF (0)");
                 brls::Logger::info("MPVCore => END_OF_FILE");
                 mpvCoreEvent.fire(MpvEventEnum::END_OF_FILE);
             } else {
+                MPV_LOG("END_FILE reason: STOP (2) or other");
                 brls::Logger::info("MPVCore => STOP");
                 mpvCoreEvent.fire(MpvEventEnum::MPV_STOP);
             }
@@ -667,9 +751,11 @@ void MPVCore::eventMainLoop() {
 }
 
 void MPVCore::reset() {
+    MPV_LOG("=== reset() called ===");
     brls::Logger::debug("MPVCore::reset");
     mpvCoreEvent.fire(MpvEventEnum::RESET);
     this->stop();
+    MPV_LOG("reset() - after stop()");
     this->video_stopped = true;
     this->video_paused = false;
     this->duration = 0;     // second
@@ -682,18 +768,34 @@ void MPVCore::reset() {
 
 void MPVCore::setUrl(const std::string &url, const std::string &extra, const std::string &method, uint64_t userdata) {
     brls::Logger::debug("MPVCore {} ({}) extra: ({})", method, url, extra);
+#ifdef __PS4__
+    s_draw_count = 0;  // Reset draw log counter for new video
+#endif
+    MPV_LOG("=== setUrl() called ===");
+    MPV_LOG("URL: %s", url.c_str());
+    MPV_LOG("video_stopped before: %d", this->video_stopped ? 1 : 0);
+    // Set video_stopped to false immediately so draw() will render
+    // (normally set by MPV_EVENT_PLAYBACK_RESTART which may not fire on PS4)
+    this->video_stopped = false;
+    MPV_LOG("video_stopped after: %d", this->video_stopped ? 1 : 0);
     if (mpv_client_api_version() >= MPV_MAKE_VERSION(2, 3)) {
         const char *cmd[] = {"loadfile", url.c_str(), method.c_str(), "0", extra.c_str(), nullptr};
+        MPV_LOG("Calling mpv_command_async (API >= 2.3)");
         mpv_command_async(this->mpv, userdata, cmd);
     } else {
         const char *cmd[] = {"loadfile", url.c_str(), method.c_str(), extra.c_str(), nullptr};
+        MPV_LOG("Calling mpv_command_async (API < 2.3)");
         mpv_command_async(this->mpv, userdata, cmd);
     }
+    MPV_LOG("setUrl() complete");
 }
 
 void MPVCore::togglePlay() { this->command("cycle", "pause"); }
 
-void MPVCore::stop() { this->command("stop"); }
+void MPVCore::stop() {
+    MPV_LOG("=== stop() called ===");
+    this->command("stop");
+}
 
 void MPVCore::seek(int64_t value, const std::string &flags) {
     std::string pos = std::to_string(value);

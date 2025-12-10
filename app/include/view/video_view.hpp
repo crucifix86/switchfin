@@ -149,6 +149,7 @@ private:
     // OSD
     bool isOsdShown = false;
     bool isOsdLock = false;
+    bool ignoreInput = true;  // Ignore input until video starts playing (PS4 fix)
     brls::Time osdLastShowTime = 0;
     brls::Time hintLastShowTime = 0;
     brls::Time profileLastShowTime = 0;

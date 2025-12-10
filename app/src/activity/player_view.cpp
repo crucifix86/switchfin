@@ -9,9 +9,20 @@
 #include "view/video_profile.hpp"
 #include <tinyxml2.h>
 
+#ifdef __PS4__
+extern FILE* getPlayerLog();
+#define PLAYER_LOG(fmt, ...) do { \
+    FILE* f = getPlayerLog(); \
+    if (f) { fprintf(f, fmt "\n", ##__VA_ARGS__); fflush(f); } \
+} while(0)
+#else
+#define PLAYER_LOG(fmt, ...) do {} while(0)
+#endif
+
 using namespace brls::literals;
 
 PlayerView::PlayerView(const jellyfin::Item& item, const uint64_t seekTicks) : itemId(item.Id), itemType(item.Type) {
+    PLAYER_LOG("=== PlayerView CONSTRUCTOR called ===");
     float width = brls::Application::contentWidth;
     float height = brls::Application::contentHeight;
     view = new VideoView();
@@ -79,9 +90,11 @@ PlayerView::PlayerView(const jellyfin::Item& item, const uint64_t seekTicks) : i
     });
     // 自定义的mpv事件
     customEventSubscribeID = mpv.getCustomEvent()->subscribe([this](const std::string& event, void* data) {
+        PLAYER_LOG("Custom event received: %s", event.c_str());
         if (event == QUALITY_CHANGE) {
             this->playMedia(MPVCore::instance().playback_time * jellyfin::PLAYTICKS);
         } else if (event == SYNC_STOP) {
+            PLAYER_LOG("SYNC_STOP received - closing!");
             VideoView::close();
         } else if (event == "PreviousTrack") {
             this->view->playNext(-1);
@@ -91,6 +104,10 @@ PlayerView::PlayerView(const jellyfin::Item& item, const uint64_t seekTicks) : i
     });
 
     this->setChapters(item.Chapters, item.RunTimeTicks);
+
+    // Explicitly reset MPVCore to ensure a clean slate before playing the new media
+    MPVCore::instance().reset();
+
     this->playMedia(seekTicks > 0 ? seekTicks : item.UserData.PlaybackPositionTicks);
 
     // Report stop when application exit
@@ -100,6 +117,7 @@ PlayerView::PlayerView(const jellyfin::Item& item, const uint64_t seekTicks) : i
 }
 
 PlayerView::~PlayerView() {
+    PLAYER_LOG("=== PlayerView DESTRUCTOR called ===");
     auto& mpv = MPVCore::instance();
     mpv.getEvent()->unsubscribe(eventSubscribeID);
     mpv.getCustomEvent()->unsubscribe(customEventSubscribeID);
@@ -116,6 +134,10 @@ PlayerView::~PlayerView() {
     PlayerSetting::selectedAudio = 0;
 
     if (!mpv.isStopped()) this->reportStop();
+
+    // Force reset MPV core to guarantee clean state for next video
+    mpv.reset();
+
     brls::Application::getExitEvent()->unsubscribe(this->exitSubscribeID);
     brls::Logger::debug("trying delete PlayerView...");
 }
@@ -174,6 +196,7 @@ bool PlayerView::playIndex(int index) {
 }
 
 void PlayerView::playMedia(const uint64_t seekTicks) {
+    PLAYER_LOG("=== playMedia() called, seekTicks=%llu ===", (unsigned long long)seekTicks);
 #if defined(__PS4__)
     int maxAllowedHeight = 1080;
 #elif defined(__PSV__)
@@ -310,8 +333,10 @@ void PlayerView::playMedia(const uint64_t seekTicks) {
         },
         [ASYNC_TOKEN, seekTicks](const jellyfin::PlaybackResult& r) {
             ASYNC_RELEASE
+            PLAYER_LOG("playMedia callback received, MediaSources=%zu", r.MediaSources.size());
 
             if (r.MediaSources.empty()) {
+                PLAYER_LOG("ERROR: MediaSources empty, ErrorCode=%s", r.ErrorCode.c_str());
                 Dialog::show(r.ErrorCode, []() { VideoView::close(); });
                 return;
             }
@@ -332,6 +357,7 @@ void PlayerView::playMedia(const uint64_t seekTicks) {
                 if (item.IsInfiniteStream) view->hideVideoProgressSlider();
 
                 if (item.IsRemote && MPVCore::FORCE_DIRECTPLAY) {
+                    PLAYER_LOG("Using remote direct play: %s", item.Path.c_str());
                     mpv.setUrl(item.Path, ssextra.str());
                     this->stream = std::move(item);
                     return;
@@ -348,6 +374,7 @@ void PlayerView::playMedia(const uint64_t seekTicks) {
                             {"tag", item.ETag},
                         }));
                     this->playMethod = jellyfin::methodDirectPlay;
+                    PLAYER_LOG("Using DirectPlay, calling setUrl");
                     mpv.setUrl(svr + url, ssextra.str());
                     this->stream = std::move(item);
                     return;
@@ -355,6 +382,7 @@ void PlayerView::playMedia(const uint64_t seekTicks) {
 
                 if (item.SupportsTranscoding) {
                     this->playMethod = jellyfin::methodTranscode;
+                    PLAYER_LOG("Using Transcode, calling setUrl");
                     mpv.setUrl(svr + item.TranscodingUrl, ssextra.str());
                     this->stream = std::move(item);
                     return;
@@ -365,9 +393,11 @@ void PlayerView::playMedia(const uint64_t seekTicks) {
         },
         [ASYNC_TOKEN](const std::string& ex) {
             ASYNC_RELEASE
+            PLAYER_LOG("playMedia ERROR callback: %s", ex.c_str());
             Dialog::show(ex, []() { VideoView::close(); });
         },
         jellyfin::apiPlayback, this->itemId);
+    PLAYER_LOG("playMedia() async request sent for itemId=%s", this->itemId.c_str());
 }
 
 void PlayerView::reportStart() {

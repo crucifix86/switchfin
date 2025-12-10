@@ -18,7 +18,6 @@ public:
     void setSeries(const std::string& seriesId);
     void setTitie(const std::string& title);
 
-#ifdef ANDROID
     void willDisappear(bool resetState) override {
         if (brls::Application::getThemeVariant() == brls::ThemeVariant::LIGHT)
             brls::Application::getTheme().addColor("brls/clear", nvgRGBA(235, 235, 235, 255));
@@ -27,9 +26,9 @@ public:
     }
 
     void willAppear(bool resetState) override {
+        // Force full transparency to allow video surface to show through immediately
         brls::Application::getTheme().addColor("brls/clear", nvgRGBA(0, 0, 0, 0));
     }
-#endif
 
 private:
     void setChapters(const std::vector<jellyfin::MediaChapter>& chaps, uint64_t duration);

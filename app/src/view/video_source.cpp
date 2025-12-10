@@ -12,6 +12,16 @@
 #include "view/video_source.hpp"
 #include "view/context_menu.hpp"
 
+#ifdef __PS4__
+extern FILE* getPlayerLog();
+#define SOURCE_LOG(fmt, ...) do { \
+    FILE* f = getPlayerLog(); \
+    if (f) { fprintf(f, fmt "\n", ##__VA_ARGS__); fflush(f); } \
+} while(0)
+#else
+#define SOURCE_LOG(fmt, ...) do {} while(0)
+#endif
+
 using namespace brls::literals;  // for _i18n
 
 VideoDataSource::VideoDataSource(const MediaList& r) : list(std::move(r)), resume(false) {}
@@ -95,23 +105,29 @@ RecyclingGridItem* VideoDataSource::cellForRow(RecyclingView* recycler, size_t i
 
 void VideoDataSource::onItemSelected(brls::Box* recycler, size_t index) {
     auto& item = this->list.at(index);
+    SOURCE_LOG("=== onItemSelected: type=%s, resume=%d ===", item.Type.c_str(), this->resume ? 1 : 0);
 
     if (item.Type == jellyfin::mediaTypeSeries) {
+        SOURCE_LOG("Presenting MediaSeries");
         recycler->present(new MediaSeries(item));
     } else if (item.Type == jellyfin::mediaTypeMovie) {
         if (this->resume) {
+            SOURCE_LOG("Creating PlayerView for movie (resume mode)");
             PlayerView* view = new PlayerView(item);
             view->setTitie(item.ProductionYear ? fmt::format("{} ({})", item.Name, item.ProductionYear) : item.Name);
         } else {
+            SOURCE_LOG("Presenting MediaMovie");
             recycler->present(new MediaMovie(item));
         }
     } else if (item.Type == jellyfin::mediaTypeFolder || item.Type == jellyfin::mediaTypeBoxSet ||
                item.Type == jellyfin::mediaTypePhotoAlbum) {
         recycler->present(new MediaCollection(item.Id));
     } else if (item.Type == jellyfin::mediaTypeMusicVideo || item.Type == jellyfin::mediaTypeVideo) {
+        SOURCE_LOG("Creating PlayerView for video");
         PlayerView* view = new PlayerView(item);
         view->setTitie(item.ProductionYear ? fmt::format("{} ({})", item.Name, item.ProductionYear) : item.Name);
     } else if (item.Type == jellyfin::mediaTypeEpisode) {
+        SOURCE_LOG("Creating PlayerView for episode");
         PlayerView* view = new PlayerView(item);
         view->setTitie(fmt::format("S{}E{} - {}", item.ParentIndexNumber, item.IndexNumber, item.Name));
         view->setSeries(item.SeriesId);
